@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Contains all of the code to interact with the database
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_DATABASE_URL")
+}
+
+// Whenever there are changes to the prisma model use this command to update the database with the new /updated columns of each model
+// Run "npx prisma migrate dev --name init"
+
+// If you have two variables referencing the same tables you will need to name the relationship
+// For many to many relationship, we can just there is no need to use the @relation directive
+
+// ? - optional
+// ! - required
+// backwards - refers to the one-to-one relationship in a one to many relationship
+// forwards - refers to the one-to-many relationship in a one to many relationship
+
+model User {
+  // Properties of user
+  id               Int             @id @default(autoincrement())
+  email            String          @unique
+  name             String
+  password         String // Hash password with bcrypt
+  // A user can write multiple reviews (one to many, forwards)
+  writtenReviews   Review[]
+  // A user can purchase multiple games, and each games can have multiple users (many to many)
+  purchasedGames   Game[]
+  userPreferenceId Int?            @unique
+  userPreference   UserPreference? @relation(fields: [userPreferenceId], references: [id], onDelete: Cascade)
+}
+
+model UserPreference {
+  id      Int     @id @default(autoincrement())
+  isAdmin Boolean
+  // One user can only have one user preference (one to one) and vice versa
+  // This must be unique because users must have one unique user preference
+  user    User?
+}
+
+// model Category {
+//   id          Int    @id @default(autoincrement())
+//   name        String @unique
+//   description String
+//   // Each category can have multiple games (one to many, forwards)
+//   games       Game[]
+// }
+
+model Game {
+  // Each game can have multiple reviews (one to many)
+  id                    Int      @id @default(autoincrement())
+  title                 String   @unique
+  description           String
+  image_url             String
+  developer             String
+  releaseDate           String
+  responsive_reviewdesc String
+  averageRating         Float    @default(0)
+  // People who have purchased the game
+  // Each game can have multiple users, A user can purchase multiple games.
+  purchasedUsers        User[]
+  // People who have rated the game but each review can be only for one game (one to many, forwards)
+  reviews               Review[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  // categories            Category[]
+}
+
+model Review {
+  id            Int      @id @default(autoincrement())
+  averageRating Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt // auto update this value when any value in review is updated
+  // This is how you make different relationships inside of prisma.
+  // 1.  @relation - tells prisma that there is a relationship between the two models
+  // 2.  @relation(fields: [userId] reference id) - tells prisma that the userId in the review table is referencing the id in the user table
+  // Each user has a unique id, and each review has a unique id by writing this: This review with the userId of 1 is the same as the user in the usertable with the id
+  /// userId in Review <--> id in User table
+  // tldr: when creating relationships: always creating another field with the id then connect the 2 ids together using the @ relation
+  // Each review can only be written by one user but each user can write multiple reviews (one to many relationship, backwards)
+  authorId      Int
+  author        User     @relation(fields: [authorId], references: [id])
+  content       String
+  // Each review can only be for one game but each game can have multiple reviews (one to many relationship, backwards)
+  gameId        Int
+  gameTitle     String   @default("")
+  game          Game     @relation(fields: [gameId], references: [id])
+}
